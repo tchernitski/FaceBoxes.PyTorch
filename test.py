@@ -143,16 +143,16 @@ if __name__ == '__main__':
         loc, conf = net(samples)
         _t['forward_pass'].toc()
         
+        
         _t['misc'].tic()
-
         task_count = len(samples)
+        whole_scores = conf.data.cpu().numpy()[:, 1]
         for j in range(task_count):
-
             boxes = decode(loc[j].data.squeeze(0), prior_data, cfg['variance'])
             boxes = boxes * scale / resize
             boxes = boxes.cpu().numpy()
-            scores = conf.data.cpu().numpy()[j*19620:j*19620 + 19620, 1]
-
+            scores = whole_scores[j*19620:j*19620 + 19620]
+            
             # ignore low scores
             inds = np.where(scores > args.confidence_threshold)[0]
             boxes = boxes[inds]
@@ -166,7 +166,7 @@ if __name__ == '__main__':
             # do NMS
             dets = np.hstack((boxes, scores[:, np.newaxis])).astype(np.float32, copy=False)
             #keep = py_cpu_nms(dets, args.nms_threshold)
-            keep = nms(dets, args.nms_threshold,force_cpu=args.cpu)
+            keep = nms(dets, args.nms_threshold, force_cpu=True)
             dets = dets[keep, :]
 
             # keep top-K faster NMS
@@ -193,6 +193,7 @@ if __name__ == '__main__':
             # cv2.imwrite(dst_folder + '/' + labels[j], img)
         
         _t['misc'].toc()
+        
         print('{:d} forward: {:.4f}s misc: {:.4f}s'.format(i, _t['forward_pass'].diff, _t['misc'].diff))
 
                 
